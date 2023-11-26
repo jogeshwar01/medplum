@@ -10,7 +10,6 @@ import {
 import { Request, Response, Router } from 'express';
 import { body, validationResult } from 'express-validator';
 import { asyncWrap } from '../async';
-import { setPassword } from '../auth/setpassword';
 import { getConfig } from '../config';
 import { getClient } from '../database';
 import { AsyncJobExecutor } from '../fhir/operations/utils/asyncjobexecutor';
@@ -18,12 +17,12 @@ import { invalidRequest, sendOutcome } from '../fhir/outcomes';
 import { authenticateRequest } from '../oauth/middleware';
 import { systemRepo } from '../fhir/repo';
 import * as dataMigrations from '../migrations/data';
-import { getUserByEmail } from '../oauth/utils';
 import { rebuildR4SearchParameters } from '../seeds/searchparameters';
 import { rebuildR4StructureDefinitions } from '../seeds/structuredefinitions';
 import { rebuildR4ValueSets } from '../seeds/valuesets';
 import { removeBullMQJobByKey } from '../workers/cron';
 import { getAuthenticatedContext, getRequestContext } from '../context';
+import { forceSetPassword } from './utils';
 
 export const superAdminRouter = Router();
 superAdminRouter.use(authenticateRequest);
@@ -114,20 +113,7 @@ superAdminRouter.post(
   asyncWrap(async (req: Request, res: Response) => {
     requireSuperAdmin();
 
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      sendOutcome(res, invalidRequest(errors));
-      return;
-    }
-
-    const user = await getUserByEmail(req.body.email, req.body.projectId);
-    if (!user) {
-      sendOutcome(res, badRequest('User not found'));
-      return;
-    }
-
-    await setPassword(user, req.body.password as string);
-    sendOutcome(res, allOk);
+    await forceSetPassword(req, res);
   })
 );
 

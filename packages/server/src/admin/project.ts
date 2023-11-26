@@ -1,6 +1,7 @@
 import { allOk, badRequest, forbidden, getReferenceString } from '@medplum/core';
 import { ProjectMembership } from '@medplum/fhirtypes';
 import { Request, Response, Router } from 'express';
+import { body } from 'express-validator';
 import { asyncWrap } from '../async';
 import { sendOutcome } from '../fhir/outcomes';
 import { systemRepo } from '../fhir/repo';
@@ -10,6 +11,7 @@ import { createClientHandler, createClientValidator } from './client';
 import { inviteHandler, inviteValidator } from './invite';
 import { verifyProjectAdmin } from './utils';
 import { getAuthenticatedContext } from '../context';
+import { forceSetPassword } from './utils';
 
 export const projectAdminRouter = Router();
 projectAdminRouter.use(authenticateRequest);
@@ -115,5 +117,18 @@ projectAdminRouter.delete(
 
     await systemRepo.deleteResource('ProjectMembership', req.params.membershipId);
     sendOutcome(res, allOk);
+  })
+);
+
+// POST to /admin/projects/setpassword
+// to force set a User password.
+projectAdminRouter.post(
+  '/setpassword',
+  [
+    body('email').isEmail().withMessage('Valid email address is required'),
+    body('password').isLength({ min: 8 }).withMessage('Invalid password, must be at least 8 characters'),
+  ],
+  asyncWrap(async (req: Request, res: Response) => {
+    await forceSetPassword(req, res);
   })
 );
