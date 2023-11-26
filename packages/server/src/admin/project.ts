@@ -16,6 +16,20 @@ import { forceSetPassword } from './utils';
 export const projectAdminRouter = Router();
 projectAdminRouter.use(authenticateRequest);
 projectAdminRouter.use(verifyProjectAdmin);
+
+// POST to /admin/projects/setpassword
+// to force set a User password.
+projectAdminRouter.post(
+  '/setpassword',
+  [
+    body('email').isEmail().withMessage('Valid email address is required'),
+    body('password').isLength({ min: 8 }).withMessage('Invalid password, must be at least 8 characters'),
+  ],
+  asyncWrap(async (req: Request, res: Response) => {
+    await forceSetPassword(req, res);
+  })
+);
+
 projectAdminRouter.post('/:projectId/bot', createBotValidator, asyncWrap(createBotHandler));
 projectAdminRouter.post('/:projectId/client', createClientValidator, asyncWrap(createClientHandler));
 projectAdminRouter.post('/:projectId/invite', inviteValidator, asyncWrap(inviteHandler));
@@ -117,18 +131,5 @@ projectAdminRouter.delete(
 
     await systemRepo.deleteResource('ProjectMembership', req.params.membershipId);
     sendOutcome(res, allOk);
-  })
-);
-
-// POST to /admin/projects/setpassword
-// to force set a User password.
-projectAdminRouter.post(
-  '/setpassword',
-  [
-    body('email').isEmail().withMessage('Valid email address is required'),
-    body('password').isLength({ min: 8 }).withMessage('Invalid password, must be at least 8 characters'),
-  ],
-  asyncWrap(async (req: Request, res: Response) => {
-    await forceSetPassword(req, res);
   })
 );

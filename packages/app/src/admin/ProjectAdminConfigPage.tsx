@@ -1,17 +1,12 @@
 import { Button, Divider, PasswordInput, Stack, TextInput, Title } from '@mantine/core';
 import { showNotification } from '@mantine/notifications';
 import { forbidden, normalizeErrorString } from '@medplum/core';
-import {
-  Document,
-  Form,
-  OperationOutcomeAlert,
-  useMedplum,
-} from '@medplum/react';
+import { Document, Form, OperationOutcomeAlert, useMedplum } from '@medplum/react';
 
 export function ProjectAdminConfigPage(): JSX.Element {
   const medplum = useMedplum();
 
-  if (!medplum.isLoading() && !medplum.isProjectAdmin) {
+  if (!medplum.isLoading() && !medplum.isProjectAdmin()) {
     return <OperationOutcomeAlert outcome={forbidden} />;
   }
 

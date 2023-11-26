@@ -21,7 +21,7 @@ export async function verifyProjectAdmin(req: Request, res: Response, next: Next
   }
 }
 
-export async function forceSetPassword (req: Request, res: Response) {
+export async function forceSetPassword(req: Request, res: Response) {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     sendOutcome(res, invalidRequest(errors));
@@ -36,4 +36,4 @@ export async function forceSetPassword (req: Request, res: Response) {
 
   await setPassword(user, req.body.password as string);
   sendOutcome(res, allOk);
-};
+}

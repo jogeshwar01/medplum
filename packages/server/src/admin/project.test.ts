@@ -17,10 +17,30 @@ jest.mock('node-fetch');
 
 const app = express();
 
+let adminAccessToken: string;
+let nonAdminAccessToken: string;
+
 describe('Project Admin routes', () => {
   beforeAll(async () => {
     const config = await loadTestConfig();
     await withTestContext(() => initApp(app, config));
+
+    const aliceRegistrationPassword = await withTestContext(() =>
+      registerNew({
+        firstName: 'Alice',
+        lastName: 'Smith',
+        projectName: 'Alice Project',
+        email: `alice${randomUUID()}@example.com`,
+        password: 'password!@#',
+      })
+    );
+
+    const bobRegistrationPassword = await addTestUser(aliceRegistrationPassword.project, {
+      resourceType: 'AccessPolicy',
+    });
+
+    adminAccessToken = aliceRegistrationPassword.accessToken;
+    nonAdminAccessToken = bobRegistrationPassword.accessToken;
   });
 
   afterAll(async () => {
@@ -452,5 +472,71 @@ describe('Project Admin routes', () => {
     expect(res3.status).toBe(200);
     expect(res3.body.project.site).toHaveLength(1);
     expect(res3.body.project.site[0].name).toEqual('test_site');
+  });
+
+  test('Set password access denied', async () => {
+    const res = await request(app)
+      .post('/admin/projects/setpassword')
+      .set('Authorization', 'Bearer ' + nonAdminAccessToken)
+      .type('json')
+      .send({
+        email: 'alice@example.com',
+        password: 'password123',
+      });
+
+    expect(res.status).toBe(403);
+  });
+
+  test('Set password missing password', async () => {
+    const res = await request(app)
+      .post('/admin/projects/setpassword')
+      .set('Authorization', 'Bearer ' + adminAccessToken)
+      .type('json')
+      .send({
+        email: 'alice@example.com',
+        password: '',
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.issue[0].details.text).toBe('Invalid password, must be at least 8 characters');
+  });
+
+  test('Set password user not found', async () => {
+    const res = await request(app)
+      .post('/admin/projects/setpassword')
+      .set('Authorization', 'Bearer ' + adminAccessToken)
+      .type('json')
+      .send({
+        email: 'user-not-found@example.com',
+        password: 'password123',
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.issue[0].details.text).toBe('User not found');
+  });
+
+  test('Set password success', async () => {
+    const email = `alice${randomUUID()}@example.com`;
+
+    await withTestContext(() =>
+      registerNew({
+        firstName: 'Alice',
+        lastName: 'Smith',
+        projectName: 'Alice Project',
+        email,
+        password: 'password!@#',
+      })
+    );
+
+    const res = await request(app)
+      .post('/admin/projects/setpassword')
+      .set('Authorization', 'Bearer ' + adminAccessToken)
+      .type('json')
+      .send({
+        email,
+        password: 'new-password!@#',
+      });
+
+    expect(res.status).toBe(200);
   });
 });
